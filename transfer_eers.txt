@@ -1,10 +1,10 @@
 #!/bin/bash
 
-# Array con las rutas de los archivos a subir
-files_to_upload=(
-    "/dataiku/dss_data/managed_folders/DSSEERSLAYOUT/XxozBWjW/EERS178435.txt"
-    "/dataiku/dss_data/managed_folders/DSSEERSLAYOUT/XxozBWjW/otro_archivo1.txt"
-    "/dataiku/dss_data/managed_folders/DSSEERSLAYOUT/XxozBWjW/otro_archivo2.txt"
+# Array con los directorios desde donde subir archivos
+directorios=(
+    "/dataiku/dss_data/managed_folders/DSSEERSLAYOUT/XxozBWjW/"
+    "/dataiku/dss_data/managed_folders/DSSEERSLAYOUT/AnotherFolder/"
+    "/dataiku/dss_data/managed_folders/DSSEERSLAYOUT/MoreFiles/"
 )
 
 # Verificar si la conexión SSH funciona (solo con claves, sin contraseña)
@@ -14,19 +14,29 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-# Generar los comandos put dinámicamente
+# Generar los comandos put dinámicamente tomando archivos de cada directorio
 put_commands=""
-for file in "${files_to_upload[@]}"; do
-    if [ -f "$file" ]; then
-        put_commands+="put $file"$'\n'
+for dir in "${directorios[@]}"; do
+    if [ -d "$dir" ]; then
+        for file in "$dir"*; do
+            if [ -f "$file" ]; then
+                filename=$(basename "$file")
+                # Comando para eliminar el archivo remoto si ya existe
+                put_commands+="rm $filename"$'\n'
+                # Comando para subir el archivo
+                put_commands+="put $file"$'\n'
+            else
+                echo "Advertencia: El archivo $file no es un archivo regular y será omitido."
+            fi
+        done
     else
-        echo "Advertencia: El archivo $file no existe y será omitido."
+        echo "Advertencia: El directorio $dir no existe y será omitido."
     fi
 done
 
 # Si no hay archivos para subir, salir
 if [ -z "$put_commands" ]; then
-    echo "Error: No hay archivos válidos para subir."
+    echo "Error: No hay archivos válidos para subir en los directorios especificados."
     exit 1
 fi
 
@@ -38,3 +48,4 @@ $put_commands
 bye
 EOD
 EOF
+
