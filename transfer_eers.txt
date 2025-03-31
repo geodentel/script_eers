@@ -1,0 +1,40 @@
+#!/bin/bash
+
+# Array con las rutas de los archivos a subir
+files_to_upload=(
+    "/dataiku/dss_data/managed_folders/DSSEERSLAYOUT/XxozBWjW/EERS178435.txt"
+    "/dataiku/dss_data/managed_folders/DSSEERSLAYOUT/XxozBWjW/otro_archivo1.txt"
+    "/dataiku/dss_data/managed_folders/DSSEERSLAYOUT/XxozBWjW/otro_archivo2.txt"
+)
+
+# Verificar si la conexión SSH funciona (solo con claves, sin contraseña)
+ssh -q -o BatchMode=yes -o PasswordAuthentication=no -o PubkeyAuthentication=yes gdenova@localhost true
+if [ $? -ne 0 ]; then
+    echo "Error: No se pudo conectar a gdenova@localhost usando claves SSH. Verifica la configuración de las claves."
+    exit 1
+fi
+
+# Generar los comandos put dinámicamente
+put_commands=""
+for file in "${files_to_upload[@]}"; do
+    if [ -f "$file" ]; then
+        put_commands+="put $file"$'\n'
+    else
+        echo "Advertencia: El archivo $file no existe y será omitido."
+    fi
+done
+
+# Si no hay archivos para subir, salir
+if [ -z "$put_commands" ]; then
+    echo "Error: No hay archivos válidos para subir."
+    exit 1
+fi
+
+# Ejecutar el SFTP con los comandos generados
+ssh gdenova@localhost bash <<EOF
+sftp mxdkupsftp@eersprod.nam.nsroot.net <<EOD
+cd /home/feeders/mxdkupsftp/pub
+$put_commands
+bye
+EOD
+EOF
